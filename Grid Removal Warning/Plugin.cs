@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using Torch;
 using Torch.API;
+using System.Diagnostics;
 
 
 namespace Grid_Removal_Warning
@@ -79,6 +80,8 @@ namespace Grid_Removal_Warning
 
         public List<GridValidationResult> RunScan()
         {
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
             Log.Info("Starting grid scan beeboo beeb ...");
 
             var grids = scanner.Scan();
@@ -96,6 +99,12 @@ namespace Grid_Removal_Warning
                     warnings.Add(result);
                 }
             }
+            stopwatch.Stop();
+            
+            Log.Info($"Grid scan completed in {stopwatch.ElapsedMilliseconds} ms." +
+                $"Grids scanned: {grids.Count}." +
+                $"Grids with warnings : {warnings.Count}."
+                );
 
             return warnings;
         }

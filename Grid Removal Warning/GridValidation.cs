@@ -5,23 +5,25 @@ using VRage.Game;
 
 namespace Grid_Removal_Warning
 {
+    
     public class GridValidator
     {
-        private Logger Log = LogManager.GetCurrentClassLogger();
+        private readonly Logger Log = LogManager.GetCurrentClassLogger();
 
         private readonly List<MyDefinitionId> requiredBlockDefinitions;
 
         private readonly Config config;
-        public GridValidator(Config config, List<MyDefinitionId> requiredBlockDefinitions)
+
+        public GridValidator(
+            Config config,
+            List<MyDefinitionId> requiredBlockDefinitions)
         {
             this.config = config;
             this.requiredBlockDefinitions = requiredBlockDefinitions;
         }
-        // Validate a grid based on the configuration
 
         public GridValidationResult ValidateGrid(GridInfo info)
         {
-            // Create a new validation result for the grid
             var result = new GridValidationResult
             {
                 Grid = info
@@ -30,38 +32,83 @@ namespace Grid_Removal_Warning
             Log.Info($"Validating grid: {info.Name}");
 
             // Check for owner
-
             if (info.OwnerId == 0)
             {
                 Log.Warn($"{info.Name} has no owner.");
             }
-            // Check for required blocks
 
+            // Check required block categories
             if (config.EnableBlockCheck)
             {
-                foreach (var required in requiredBlockDefinitions)
-                {
-                    if (!info.FoundBlocks.Contains(required))
-                    {
-                        result.Problems.Add($"Missing required block");
-                    }
-                }
+                CheckRequiredBlocks(info, result);
             }
 
+            // Check generic grid name
             if (config.EnableNameCheck)
             {
                 CheckGridName(info, result);
             }
+
             return result;
         }
-        // Check if the grid name starts with any of the generic names in the configuration
-        private void CheckGridName(GridInfo info, GridValidationResult result)
+
+        private void CheckRequiredBlocks(
+            GridInfo info,
+            GridValidationResult result)
+        {
+            // Group all definitions by TypeId.
+            // Example:
+            //
+            // MyObjectBuilder_Beacon
+            //     - LargeBlockBeacon
+            //     - SmallBlockBeacon
+            //     - LargeBlockBeaconReskin
+            //     - SmallBlockBeaconReskin
+            //
+            // These are treated as ONE required category: Beacon.
+
+            var requiredCategories = requiredBlockDefinitions
+                .GroupBy(definition => definition.TypeId);
+
+            foreach (var category in requiredCategories)
+            {
+                // Check if the grid contains ANY subtype
+                // belonging to this category.
+                bool hasRequiredBlock = info.FoundBlocks
+                    .Any(foundBlock =>
+                        foundBlock.TypeId == category.Key);
+
+                if (!hasRequiredBlock)
+                {
+                    string categoryName = category.Key.ToString();
+
+                    // Convert:
+                    // MyObjectBuilder_Beacon
+                    //
+                    // Into:
+                    // Beacon
+                    if (categoryName.StartsWith("MyObjectBuilder_"))
+                    {
+                        categoryName = categoryName.Substring(
+                            "MyObjectBuilder_".Length);
+                    }
+
+                    result.Problems.Add(
+                        $"Missing {categoryName}");
+                }
+            }
+        }
+
+        private void CheckGridName(
+            GridInfo info,
+            GridValidationResult result)
         {
             foreach (var genericName in config.GenericGridNames)
             {
                 if (info.Name.StartsWith(genericName))
                 {
                     result.Problems.Add("Generic grid name");
+                    break;
                 }
             }
         }

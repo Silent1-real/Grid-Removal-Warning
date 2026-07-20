@@ -6,50 +6,64 @@ using VRage.Game;
 
 namespace Grid_Removal_Warning
 {
-    // The BlockDefinitionResolver class is responsible for resolving block names to their corresponding MyDefinitionId objects.
     public class BlockDefinitionResolver
     {
-        private Logger Log = LogManager.GetCurrentClassLogger();
-        // Resolve a list of block names to their corresponding MyDefinitionId objects.
+        private readonly Logger Log = LogManager.GetCurrentClassLogger();
+
         public List<MyDefinitionId> ResolveRequiredBlocks(List<string> blockNames)
         {
             List<MyDefinitionId> definitionIds = new List<MyDefinitionId>();
 
+            var cubeBlockDefinitions =
+                MyDefinitionManager.Static.GetDefinitionsOfType<MyCubeBlockDefinition>();
+
             foreach (var blockName in blockNames)
             {
-                MyCubeBlockDefinition definition = FindBlockDefinition(blockName);
+                string expectedTypeName = "MyObjectBuilder_" + blockName;
 
-                if (definition == null)
+                Log.Info(
+                    $"Searching definitions for block category: {blockName} " +
+                    $"(Expected TypeId: {expectedTypeName})"
+                );
+
+                int foundCount = 0;
+
+                int totalDefinitions = 0;
+
+                foreach (var definition in cubeBlockDefinitions)
                 {
-                    Log.Warn($"Block definition not found for: {blockName}");
-                    continue;
+                    totalDefinitions++;
+
+                    if (definition.Id.TypeId.ToString() == expectedTypeName)
+                    {
+                        definitionIds.Add(definition.Id);
+                        foundCount++;
+
+                        Log.Info(
+                            $"MATCHED {blockName}: {definition.Id}"
+                        );
+                    }
                 }
 
-                    Log.Info($"Resolved block definition for {blockName}: {definition.Id}");
+                Log.Info(
+                    $"Total MyCubeBlockDefinition definitions checked: {totalDefinitions}"
+                );
 
-                definitionIds.Add(definition.Id);
+                if (foundCount == 0)
+                {
+                    Log.Warn(
+                        $"No block definitions found for category: {blockName}"
+                    );
+                }
+                else
+                {
+                    Log.Info(
+                        $"Found {foundCount} definition(s) for category: {blockName}"
+                    );
+                }
             }
 
             return definitionIds;
-        }
-
-        private MyCubeBlockDefinition FindBlockDefinition(string blockName)
-        {
-            Log.Info("Starting definition search...");
-
-            var definitions =
-                MyDefinitionManager.Static.GetAllDefinitions<MyCubeBlockDefinition>();
-
-            Log.Info($"Total block definitions found: {definitions.Count()}");
-
-            foreach (var definition in definitions)
-            {
-                Log.Info(
-                    $"Definition: Id={definition.Id} | DisplayNameText={definition.DisplayNameText}"
-                );
-            }
-
-            return null;
         }
     }
 }
