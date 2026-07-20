@@ -2,15 +2,20 @@
 using Sandbox;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Windows.Controls;
 using Torch;
 using Torch.API;
-using System.Diagnostics;
+using Torch.API.Managers;
+using Torch.API.Plugins;
+using Torch.Commands;
+using Torch.Views;
 
 
 namespace Grid_Removal_Warning
 {
-    public class Plugin : TorchPluginBase
+    public class Plugin : TorchPluginBase, IWpfPlugin
     {
         // Configuration for the plugin
         private VeryPersistent<Config> _config;
@@ -26,6 +31,10 @@ namespace Grid_Removal_Warning
         private static readonly NLog.Logger Log = LogManager.GetCurrentClassLogger();
         // Initialize the plugin and set up event handlers
         private DateTime nextScanTime;
+
+        // Cooldown tracking - shared by automatic scans and every !grw command
+        private DateTime lastScanTime = DateTime.MinValue;
+        private List<GridValidationResult> lastWarnings = new List<GridValidationResult>();
 
         private void LoadConfig()
         {
@@ -55,6 +64,14 @@ namespace Grid_Removal_Warning
             base.Torch.GameStateChanged += OnGameStateChanged;
         }
 
+        public UserControl GetControl()
+        {
+            return new PropertyGrid
+            {
+                DataContext = Config
+            };
+        }
+
         // Event handler for when the game state changes
         private void OnGameStateChanged(
             MySandboxGame game,
@@ -62,8 +79,6 @@ namespace Grid_Removal_Warning
         {
             if (newstate != TorchGameState.Loaded)
                 return;
-
-            Log.Info("Game loaded. Resolving block definitions...");
 
             var requiredBlockDefinitions =
                 resolver.ResolveRequiredBlocks(Config.RequiredBlocks);
@@ -80,6 +95,12 @@ namespace Grid_Removal_Warning
 
         public List<GridValidationResult> RunScan()
         {
+            if (DateTime.Now < lastScanTime.AddMinutes(Config.ScanCooldownMinutes))
+            {
+                Log.Info("Scan skipped - cooldown active, returning last known results.");
+                return lastWarnings;
+            }
+
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             Log.Info("Starting grid scan beeboo beeb ...");
@@ -100,14 +121,18 @@ namespace Grid_Removal_Warning
                 }
             }
             stopwatch.Stop();
-            
+
             Log.Info($"Grid scan completed in {stopwatch.ElapsedMilliseconds} ms." +
                 $"Grids scanned: {grids.Count}." +
                 $"Grids with warnings : {warnings.Count}."
                 );
 
+            lastScanTime = DateTime.Now;
+            lastWarnings = warnings;
+
             return warnings;
         }
+
         public void Save()
         {
             _config.Save();
@@ -125,10 +150,9 @@ namespace Grid_Removal_Warning
 
             if (DateTime.Now < nextScanTime)
                 return;
-
-
-            RunScan();
-
+            
+            var commandManager = Torch.CurrentSession?.Managers?.GetManager<CommandManager>();
+            commandManager?.HandleCommandFromServer("!grw warn");
 
             nextScanTime = DateTime.Now.AddMinutes(Config.ScanIntervalMinutes);
         }

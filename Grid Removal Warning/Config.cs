@@ -24,10 +24,13 @@ namespace Grid_Removal_Warning
 
             return cfg;
         }
+
+        // ---- General ----
         private bool _enable = true;
 
         [Display(
             Order = 1,
+            GroupName = "General",
             Name = "Enable Plugin",
             Description = "Enable or disable Grid Removal Warning.")]
         public bool Enable
@@ -43,6 +46,7 @@ namespace Grid_Removal_Warning
 
         [Display(
             Order = 2,
+            GroupName = "General",
             Name = "Minimum Grid Size",
             Description = "Ignore grids smaller than this.")]
         public int MinimumBlocks
@@ -54,77 +58,13 @@ namespace Grid_Removal_Warning
                 OnPropertyChanged();
             }
         }
-        private int _scanIntervalMinutes = 30;
 
-        [Display(
-            Order = 3,
-            Name = "Scan Interval (Minutes)",
-            Description = "Minutes between automatic scans.")]
-        public int ScanIntervalMinutes
-        {
-            get => _scanIntervalMinutes;
-            set
-            {
-                _scanIntervalMinutes = value;
-                OnPropertyChanged();
-            }
-        }
-        private bool _enableBlockCheck = true;
-
-        [Display(
-            Order = 4,
-            Name = "Enable Required Block Check",
-            Description = "Warn if required blocks are missing.")]
-        public bool EnableBlockCheck
-        {
-            get => _enableBlockCheck;
-            set
-            {
-                _enableBlockCheck = value;
-                OnPropertyChanged();
-            }
-        }
-        private bool _enableNameCheck = true;
-
-        [Display(
-            Order = 5,
-            Name = "Enable Generic Name Check",
-            Description = "Warn if grids still use default names.")]
-        public bool EnableNameCheck
-        {
-            get => _enableNameCheck;
-            set
-            {
-                _enableNameCheck = value;
-                OnPropertyChanged();
-            }
-        }
-        private List<string> _requiredBlocks;
-
-        [Display(
-            Order = 6,
-            Name = "Required Blocks",
-            Description = "Blocks every player grid must contain.")]
-        public List<string> RequiredBlocks
-        {
-            get => _requiredBlocks;
-            set => SetValue(ref _requiredBlocks, value);
-        }
-        private List<string> _genericGridNames;
-
-        [Display(
-            Order = 7,
-            Name = "Generic Grid Names",
-            Description = "Names considered default and requiring renaming.")]
-        public List<string> GenericGridNames
-        {
-            get => _genericGridNames;
-            set => SetValue(ref _genericGridNames, value);
-        }
+        // ---- Scanning ----
         private bool _enableAutomaticScan = true;
 
         [Display(
-            Order = 8,
+            Order = 3,
+            GroupName = "Scanning",
             Name = "Enable Automatic Scanning",
             Description = "If disabled, the plugin will not perform scheduled scans. Administrators can still use !grw scan and !grw warn manually.")]
         public bool EnableAutomaticScan
@@ -136,6 +76,95 @@ namespace Grid_Removal_Warning
                 OnPropertyChanged();
             }
         }
+        private int _scanIntervalMinutes = 30;
+
+        [Display(
+            Order = 4,
+            GroupName = "Scanning",
+            Name = "Scan Interval (Minutes)",
+            Description = "Minutes between automatic scans.")]
+        public int ScanIntervalMinutes
+        {
+            get => _scanIntervalMinutes;
+            set
+            {
+                _scanIntervalMinutes = value;
+                OnPropertyChanged();
+            }
+        }
+        private int _scanCooldownMinutes = 5;
+
+        [Display(
+            Order = 5,
+            GroupName = "Scanning",
+            Name = "Scan Cooldown (Minutes)",
+            Description = "Minimum time between any two scans, whether automatic or manually triggered via !grw scan/check/warn.")]
+        public int ScanCooldownMinutes
+        {
+            get => _scanCooldownMinutes;
+            set
+            {
+                _scanCooldownMinutes = value;
+                OnPropertyChanged();
+            }
+        }
+
+        // ---- Checks ----
+        private bool _enableBlockCheck = true;
+
+        [Display(
+            Order = 6,
+            GroupName = "Checks",
+            Name = "Enable Required Block Check",
+            Description = "Warn if required blocks are missing.")]
+        public bool EnableBlockCheck
+        {
+            get => _enableBlockCheck;
+            set
+            {
+                _enableBlockCheck = value;
+                OnPropertyChanged();
+            }
+        }
+        private List<string> _requiredBlocks = new List<string>();
+
+        [Display(
+            Order = 7,
+            GroupName = "Checks",
+            Name = "Required Blocks",
+            Description = "Blocks every player grid must contain.")]
+        public List<string> RequiredBlocks
+        {
+            get => _requiredBlocks;
+            set => SetValue(ref _requiredBlocks, value);
+        }
+        private bool _enableNameCheck = true;
+
+        [Display(
+            Order = 8,
+            GroupName = "Checks",
+            Name = "Enable Generic Name Check",
+            Description = "Warn if grids still use default names.")]
+        public bool EnableNameCheck
+        {
+            get => _enableNameCheck;
+            set
+            {
+                _enableNameCheck = value;
+                OnPropertyChanged();
+            }
+        }
+        private List<string> _genericGridNames = new List<string>();
+
+        [Display(
+            Order = 9,
+            GroupName = "Checks",
+            Name = "Generic Grid Names",
+            Description = "Names considered default and requiring renaming.")]
+        public List<string> GenericGridNames
+        {
+            get => _genericGridNames;
+            set => SetValue(ref _genericGridNames, value);
+        }
     }
 }
-

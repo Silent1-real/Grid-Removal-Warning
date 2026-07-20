@@ -1,5 +1,6 @@
 ﻿using NLog;
 using Sandbox.Definitions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using VRage.Game;
@@ -27,14 +28,16 @@ namespace Grid_Removal_Warning
                 );
 
                 int foundCount = 0;
-
                 int totalDefinitions = 0;
 
                 foreach (var definition in cubeBlockDefinitions)
                 {
                     totalDefinitions++;
 
-                    if (definition.Id.TypeId.ToString() == expectedTypeName)
+                    if (string.Equals(
+                        definition.Id.TypeId.ToString(),
+                        expectedTypeName,
+                        StringComparison.OrdinalIgnoreCase))
                     {
                         definitionIds.Add(definition.Id);
                         foundCount++;
@@ -44,10 +47,6 @@ namespace Grid_Removal_Warning
                         );
                     }
                 }
-
-                Log.Info(
-                    $"Total MyCubeBlockDefinition definitions checked: {totalDefinitions}"
-                );
 
                 if (foundCount == 0)
                 {
