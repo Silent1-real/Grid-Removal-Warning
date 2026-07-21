@@ -5,7 +5,7 @@ using VRage.Game;
 
 namespace Grid_Removal_Warning
 {
-    
+
     public class GridValidator
     {
         private readonly Logger Log = LogManager.GetCurrentClassLogger();
@@ -37,15 +37,17 @@ namespace Grid_Removal_Warning
                 Log.Warn($"{info.Name} has no owner.");
             }
 
-            // Check required block categories
-            if (config.EnableBlockCheck)
+            // Check required blocks
+            if (config.EnableBlockCheck && !(config.IgnoreSubgridsForBlockCheck && info.IsSubgrid))
             {
-                CheckRequiredBlocks(info, result);
+
+                 CheckRequiredBlocks(info, result);
             }
 
             // Check generic grid name
-            if (config.EnableNameCheck)
+            if (config.EnableNameCheck && !(config.IgnoreSubgridsForNameCheck && info.IsSubgrid))
             {
+
                 CheckGridName(info, result);
             }
 

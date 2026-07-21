@@ -13,6 +13,7 @@ namespace Grid_Removal_Warning
     [Category("grw")]
     public class GridCommands : CommandModule
     {
+        // Command to scan all grids and report any that have problems
         [Command("scan", " shows grids with problems")]
 
         [Permission(MyPromoteLevel.Admin)]
@@ -43,7 +44,7 @@ namespace Grid_Removal_Warning
                 }
             }
         }
-
+        // Command to check the grids owned by the player executing the command
         [Command("check", "Checks your own grids for removal.")]
         [Permission(MyPromoteLevel.None)]
         public void CheckMyGrids()
@@ -61,7 +62,7 @@ namespace Grid_Removal_Warning
                 Context.Respond("None of your grids require attention.");
                 return;
             }
-
+            
             Context.Respond($"Found {myWarnings.Count} of your grids requiring attention.");
 
             foreach (var warning in myWarnings)
@@ -76,7 +77,7 @@ namespace Grid_Removal_Warning
             }
         }
 
-
+        // Command to send warnings to affected online players
         [Command("warn", "Send grid warnings to affected online players.")]
 
         [Permission(MyPromoteLevel.Admin)]

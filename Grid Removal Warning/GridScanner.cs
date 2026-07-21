@@ -1,6 +1,7 @@
 ﻿using NLog.Fluent;
 using Sandbox;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Blocks;
 using Sandbox.Game.Multiplayer;
 using Sandbox.Game.World;
 using System.Collections.Generic;
@@ -47,6 +48,11 @@ namespace Grid_Removal_Warning
                 .OfType<MyCubeGrid>()
                 .ToList();
 
+            // Build once if either check needs subgrid info.
+            HashSet<long> subgridIds = (config.IgnoreSubgridsForBlockCheck || config.IgnoreSubgridsForNameCheck)
+                ? GetSubgridIds()
+                : new HashSet<long>();
+
             // Filter out grids that do not meet the minimum block count requirement and collect information about the remaining grids.
             foreach (var grid in grids)
             {
@@ -69,7 +75,8 @@ namespace Grid_Removal_Warning
                     OwnerId = grid.BigOwners[0],
                     OwnerName = identity?.DisplayName?? "Unknown", // Optional: Populate the owner's name
                     Grid = grid,
-                    FoundBlocks = GetGridBlocks(grid)
+                    FoundBlocks = GetGridBlocks(grid),
+                    IsSubgrid = subgridIds.Contains(grid.EntityId)
                 };
 
 
@@ -78,6 +85,22 @@ namespace Grid_Removal_Warning
 
 
             return scannedGrids;
+        }
+
+        private HashSet<long> GetSubgridIds()
+        {
+            var subgridIds = new HashSet<long>();
+
+            foreach (var grid in MyEntities.GetEntities().OfType<MyCubeGrid>())
+            {
+                foreach (var block in grid.GetFatBlocks<MyMechanicalConnectionBlockBase>())
+                {
+                    if (block.TopGrid != null)
+                        subgridIds.Add(block.TopGrid.EntityId);
+                }
+            }
+
+            return subgridIds;
         }
 
         // Get a list of unique block types present in the given grid.

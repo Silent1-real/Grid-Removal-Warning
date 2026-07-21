@@ -11,6 +11,7 @@ namespace Grid_Removal_Warning
     {
         private readonly Logger Log = LogManager.GetCurrentClassLogger();
 
+        // Resolves a list of block names to their corresponding MyDefinitionId objects.
         public List<MyDefinitionId> ResolveRequiredBlocks(List<string> blockNames)
         {
             List<MyDefinitionId> definitionIds = new List<MyDefinitionId>();
@@ -29,7 +30,7 @@ namespace Grid_Removal_Warning
 
                 int foundCount = 0;
                 int totalDefinitions = 0;
-
+                // Iterate through all cube block definitions and check if the TypeId matches the expected type name.
                 foreach (var definition in cubeBlockDefinitions)
                 {
                     totalDefinitions++;

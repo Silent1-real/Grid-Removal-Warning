@@ -87,6 +87,8 @@ namespace Grid_Removal_Warning
         private void OnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             SaveAsync();
+
+            Log.Info($"Property changed: {e.PropertyName}. Saving config: {Path}");
         }
         
         private void SaveAsync()

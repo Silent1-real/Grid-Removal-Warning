@@ -47,7 +47,7 @@ namespace Grid_Removal_Warning
         [Display(
             Order = 2,
             GroupName = "General",
-            Name = "Minimum Grid Size",
+            Name = "Minimum Grid Block Count",
             Description = "Ignore grids smaller than this.")]
         public int MinimumBlocks
         {
@@ -66,7 +66,7 @@ namespace Grid_Removal_Warning
             Order = 3,
             GroupName = "Scanning",
             Name = "Enable Automatic Scanning",
-            Description = "If disabled, the plugin will not perform scheduled scans. Administrators can still use !grw scan and !grw warn manually.")]
+            Description = "If disabled, the plugin will not perform scheduled scans. Administrators can still use !grw scan and !grw warn manually or Use Essential plugin for scheduled scans before removal.")]
         public bool EnableAutomaticScan
         {
             get => _enableAutomaticScan;
@@ -132,7 +132,9 @@ namespace Grid_Removal_Warning
             Order = 7,
             GroupName = "Checks",
             Name = "Required Blocks",
-            Description = "Blocks every player grid must contain.")]
+            Description = "Blocks every player grid must contain."
+                          + "the plugin have its own name resolver but its important to write what comes after MyObjectBuilder_ correctly. "
+                          + "worth to note that resolver is not case sensetive wether you type beacon or Beacon does not matter.")]
         public List<string> RequiredBlocks
         {
             get => _requiredBlocks;
@@ -165,6 +167,40 @@ namespace Grid_Removal_Warning
         {
             get => _genericGridNames;
             set => SetValue(ref _genericGridNames, value);
+        }
+
+        private bool _ignoreSubgridsForBlockCheck = true;
+
+        [Display(
+            Order = 10,
+            GroupName = "Checks",
+            Name = "Ignore Subgrids for Required Block Check",
+            Description = "If Checked, subgrids attached via rotors/pistons/hinges are excluded from the required block check.")]
+        public bool IgnoreSubgridsForBlockCheck
+        {
+            get => _ignoreSubgridsForBlockCheck;
+            set
+            {
+                _ignoreSubgridsForBlockCheck = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private bool _ignoreSubgridsForNameCheck = true;
+
+        [Display(
+            Order = 11,
+            GroupName = "Checks",
+            Name = "Ignore Subgrids for Generic Name Check",
+            Description = "If Checked, subgrids attached via rotors/pistons/hinges are excluded from the generic name check.")]
+        public bool IgnoreSubgridsForNameCheck
+        {
+            get => _ignoreSubgridsForNameCheck;
+            set
+            {
+                _ignoreSubgridsForNameCheck = value;
+                OnPropertyChanged();
+            }
         }
     }
 }

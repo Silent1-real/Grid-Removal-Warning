@@ -83,7 +83,7 @@
     <Compile Include="GridValidationResult.cs" />
     <Compile Include="Plugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="GridValidation.cs" />
+    <Compile Include="GridValidator.cs" />
     <Compile Include="VeryPersistent.cs" />
   </ItemGroup>
   <ItemGroup>
