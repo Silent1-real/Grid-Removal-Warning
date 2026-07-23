@@ -8,7 +8,7 @@ namespace Grid_Removal_Warning
 
     public class GridValidator
     {
-        private readonly Logger Log = LogManager.GetCurrentClassLogger();
+        private readonly Logger Log = LogManager.GetLogger(typeof(GridValidator).FullName);
 
         private readonly List<MyDefinitionId> requiredBlockDefinitions;
 

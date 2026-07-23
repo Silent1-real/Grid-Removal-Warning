@@ -92,22 +92,6 @@ namespace Grid_Removal_Warning
                 OnPropertyChanged();
             }
         }
-        private int _scanCooldownMinutes = 5;
-
-        [Display(
-            Order = 5,
-            GroupName = "Scanning",
-            Name = "Scan Cooldown (Minutes)",
-            Description = "Minimum time between any two scans, whether automatic or manually triggered via !grw scan/check/warn.")]
-        public int ScanCooldownMinutes
-        {
-            get => _scanCooldownMinutes;
-            set
-            {
-                _scanCooldownMinutes = value;
-                OnPropertyChanged();
-            }
-        }
 
         // ---- Checks ----
         private bool _enableBlockCheck = true;
@@ -133,8 +117,10 @@ namespace Grid_Removal_Warning
             GroupName = "Checks",
             Name = "Required Blocks",
             Description = "Blocks every player grid must contain."
-                          + "the plugin have its own name resolver but its important to write what comes after MyObjectBuilder_ correctly. "
-                          + "worth to note that resolver is not case sensetive wether you type beacon or Beacon does not matter.")]
+            + "the plugin have its own name resolver but its important to write what comes after MyObjectBuilder_ correctly. "
+            + "worth to note that resolver is not case sensetive wether you type beacon or Beacon does not matter.+"
+            + "Since plugin use parrent category for search it automaticly includeds any subtype example DLC or potenital modded version")]
+        
         public List<string> RequiredBlocks
         {
             get => _requiredBlocks;

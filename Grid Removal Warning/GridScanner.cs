@@ -1,123 +1,219 @@
-﻿using NLog.Fluent;
-using Sandbox;
+﻿using NLog;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Blocks;
-using Sandbox.Game.Multiplayer;
 using Sandbox.Game.World;
 using System.Collections.Generic;
-using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using VRage.Game;
 
 namespace Grid_Removal_Warning
 {
-    //    The GridScanner class is responsible for scanning the game world for grids and collecting information about them.
     public class GridScanner
     {
+        private static readonly Logger Log = LogManager.GetCurrentClassLogger();
+
         private readonly Config config;
+
+        private List<MyCubeGrid> allGridsSnapshot;
+        private List<MyPlayer> pendingPlayers;
+        private HashSet<long> processedGridIds;
+        private HashSet<long> subgridIds;
+        private List<GridInfo> currentCycleResults;
+        private int playerIndex;
+
+        private Stopwatch cycleStopwatch;
+
+        public bool IsScanning { get; private set; }
 
         public GridScanner(Config config)
         {
             this.config = config;
         }
-        private bool HasOnlineOwner(MyCubeGrid grid)
+
+        // ---------------- Batched cycle (automatic scan / scan & warn commands) ----------------
+
+        // Call once, when a new scan cycle begins.
+        public void StartScan()
         {
-            if (grid.BigOwners.Count == 0)
-                return false;
+            cycleStopwatch = Stopwatch.StartNew();
 
+            var snapshotWatch = Stopwatch.StartNew();
+            allGridsSnapshot = MyEntities.GetEntities().OfType<MyCubeGrid>().ToList();
+            snapshotWatch.Stop();
 
-            foreach (var ownerId in grid.BigOwners)
+            Log.Info($"[Perf] Entity snapshot ({allGridsSnapshot.Count} grids) took {snapshotWatch.ElapsedMilliseconds} ms.");
+
+            pendingPlayers = MySession.Static.Players.GetOnlinePlayers().ToList();
+
+            processedGridIds = new HashSet<long>();
+            currentCycleResults = new List<GridInfo>();
+            playerIndex = 0;
+
+            if (config.IgnoreSubgridsForBlockCheck || config.IgnoreSubgridsForNameCheck)
             {
-                foreach (var player in MySession.Static.Players.GetOnlinePlayers())
-                {
-                    if (player.Identity.IdentityId == ownerId)
-                        return true;
-                }
+                var subgridWatch = Stopwatch.StartNew();
+                subgridIds = GetSubgridIds(allGridsSnapshot);
+                subgridWatch.Stop();
+
+                Log.Info($"[Perf] Subgrid lookup took {subgridWatch.ElapsedMilliseconds} ms.");
+            }
+            else
+            {
+                subgridIds = new HashSet<long>();
             }
 
+            IsScanning = true;
 
-            return false;
+            Log.Info($"Scan cycle started: {pendingPlayers.Count} online players, {allGridsSnapshot.Count} total grids.");
         }
 
-        // Scan the game world for grids and return a list of GridInfo objects containing information about each grid.
-        public List<GridInfo> Scan()
+        // Call once per tick. Returns true when the gathering phase is complete.
+        public bool StepScan()
         {
-            List<GridInfo> scannedGrids = new List<GridInfo>();
+            if (!IsScanning)
+                return true;
 
-            List<MyCubeGrid> grids = MyEntities.GetEntities()
-                .OfType<MyCubeGrid>()
-                .ToList();
-
-            // Build once if either check needs subgrid info.
-            HashSet<long> subgridIds = (config.IgnoreSubgridsForBlockCheck || config.IgnoreSubgridsForNameCheck)
-                ? GetSubgridIds()
-                : new HashSet<long>();
-
-            // Filter out grids that do not meet the minimum block count requirement and collect information about the remaining grids.
-            foreach (var grid in grids)
+            if (playerIndex >= pendingPlayers.Count)
             {
-                if (!HasOnlineOwner(grid))
-                    continue;
+                FinishScan();
+                return true;
+            }
 
+            var stepWatch = Stopwatch.StartNew();
+
+            var player = pendingPlayers[playerIndex];
+            long identityId = player.Identity.IdentityId;
+
+            var ownedGrids = allGridsSnapshot
+                .Where(g => g.BigOwners.Contains(identityId));
+
+            int gridsThisStep = 0;
+
+            foreach (var grid in ownedGrids)
+            {
+                // Dedupe: a grid with multiple big owners would
+                // otherwise get processed once per owner.
+                if (!processedGridIds.Add(grid.EntityId))
+                    continue;
 
                 if (grid.BlocksCount <= config.MinimumBlocks)
                     continue;
-                long ownerId = grid.BigOwners.FirstOrDefault();
 
-                var identity = MySession.Static.Players.TryGetIdentity(ownerId);
-
-                // Create a new GridInfo object and populate it with information about the grid.
-                var info = new GridInfo
+                currentCycleResults.Add(new GridInfo
                 {
                     EntityId = grid.EntityId,
                     Name = grid.DisplayName,
                     BlockCount = grid.BlocksCount,
-                    OwnerId = grid.BigOwners[0],
-                    OwnerName = identity?.DisplayName?? "Unknown", // Optional: Populate the owner's name
+                    OwnerId = identityId,
+                    OwnerName = player.DisplayName,
                     Grid = grid,
                     FoundBlocks = GetGridBlocks(grid),
                     IsSubgrid = subgridIds.Contains(grid.EntityId)
-                };
+                });
 
-
-                scannedGrids.Add(info);
+                gridsThisStep++;
             }
 
+            stepWatch.Stop();
 
-            return scannedGrids;
+            Log.Info($"[Perf] Step {playerIndex + 1}/{pendingPlayers.Count} ({player.DisplayName}): " +
+                     $"{gridsThisStep} grids processed in {stepWatch.ElapsedMilliseconds} ms.");
+
+            playerIndex++;
+
+            if (playerIndex >= pendingPlayers.Count)
+            {
+                FinishScan();
+                return true;
+            }
+
+            return false;
         }
 
-        private HashSet<long> GetSubgridIds()
+        private void FinishScan()
         {
-            var subgridIds = new HashSet<long>();
+            IsScanning = false;
+            cycleStopwatch.Stop();
 
-            foreach (var grid in MyEntities.GetEntities().OfType<MyCubeGrid>())
+            Log.Info($"[Perf] Full scan cycle completed in {cycleStopwatch.ElapsedMilliseconds} ms (spread across {playerIndex} ticks). " +
+                     $"Grids collected: {currentCycleResults.Count}.");
+        }
+
+        public List<GridInfo> GetResults() => currentCycleResults;
+
+        // ---------------- Single-player scan (check command) ----------------
+
+        // Cheap, instant scan limited to one player's grids. No batching needed -
+        // cost scales with one player's grid count, not the whole server.
+        public List<GridInfo> ScanSinglePlayer(long identityId)
+        {
+            var results = new List<GridInfo>();
+
+            var player = MySession.Static.Players.GetOnlinePlayers()
+                .FirstOrDefault(p => p.Identity.IdentityId == identityId);
+
+            if (player == null)
+                return results;
+
+            var ownedGrids = MyEntities.GetEntities()
+                .OfType<MyCubeGrid>()
+                .Where(g => g.BigOwners.Contains(identityId))
+                .ToList();
+
+            HashSet<long> subgrids = (config.IgnoreSubgridsForBlockCheck || config.IgnoreSubgridsForNameCheck)
+                ? GetSubgridIds(ownedGrids)
+                : new HashSet<long>();
+
+            foreach (var grid in ownedGrids)
+            {
+                if (grid.BlocksCount <= config.MinimumBlocks)
+                    continue;
+
+                results.Add(new GridInfo
+                {
+                    EntityId = grid.EntityId,
+                    Name = grid.DisplayName,
+                    BlockCount = grid.BlocksCount,
+                    OwnerId = identityId,
+                    OwnerName = player.DisplayName,
+                    Grid = grid,
+                    FoundBlocks = GetGridBlocks(grid),
+                    IsSubgrid = subgrids.Contains(grid.EntityId)
+                });
+            }
+
+            return results;
+        }
+
+        // ---------------- Shared helpers ----------------
+
+        private HashSet<long> GetSubgridIds(List<MyCubeGrid> gridsToCheck)
+        {
+            var ids = new HashSet<long>();
+
+            foreach (var grid in gridsToCheck)
             {
                 foreach (var block in grid.GetFatBlocks<MyMechanicalConnectionBlockBase>())
                 {
                     if (block.TopGrid != null)
-                        subgridIds.Add(block.TopGrid.EntityId);
+                        ids.Add(block.TopGrid.EntityId);
                 }
             }
 
-            return subgridIds;
+            return ids;
         }
 
-        // Get a list of unique block types present in the given grid.
-        private List<MyDefinitionId> GetGridBlocks(MyCubeGrid grid)
+        private HashSet<MyDefinitionId> GetGridBlocks(MyCubeGrid grid)
         {
-            List<MyDefinitionId> blocks = new List<MyDefinitionId>();
+            HashSet<MyDefinitionId> blocks = new HashSet<MyDefinitionId>();
 
             foreach (var block in grid.CubeBlocks)
             {
-                MyDefinitionId definitionId = block.BlockDefinition.Id;
-
-                if (!blocks.Contains(definitionId))
-                    blocks.Add(definitionId);
+                blocks.Add(block.BlockDefinition.Id);
             }
 
             return blocks;
         }
-
     }
 }

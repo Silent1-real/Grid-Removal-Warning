@@ -1,143 +1,58 @@
-﻿using Sandbox.Game.World;
-using System.Linq;
-using Torch;
-using Torch.API.Managers;
+﻿using System.Linq;
 using Torch.Commands;
 using Torch.Commands.Permissions;
 using VRage.Game.ModAPI;
-using VRageMath;
-
 
 namespace Grid_Removal_Warning
 {
     [Category("grw")]
     public class GridCommands : CommandModule
     {
-        // Command to scan all grids and report any that have problems
-        [Command("scan", " shows grids with problems")]
-
+        // Starts a scan cycle (or attaches to one already running) and reports
+        // results to the admin once it completes. No messages sent to players.
+        [Command("scan", "Scans all grids and reports problems to you.")]
         [Permission(MyPromoteLevel.Admin)]
-
         public void GridScan()
         {
             var plugin = (Plugin)Context.Plugin;
 
-            var warnings = plugin.RunScan();
+            string reply = plugin.RequestScan(Context.Player.SteamUserId);
 
-            if (warnings.Count == 0)
-            {
-                Context.Respond("No grids require attention.");
-                return;
-            }
-
-            Context.Respond($"Found {warnings.Count} grids requiring attention.");
-
-            foreach (var warning in warnings)
-            {
-                Context.Respond(
-                    $"{warning.Grid.Name} | Owner: {warning.Grid.OwnerName} | Blocks: {warning.Grid.BlockCount}"
-                );
-
-                foreach (var problem in warning.Problems)
-                {
-                    Context.Respond($"  - {problem}");
-                }
-            }
+            Context.Respond(reply);
         }
-        // Command to check the grids owned by the player executing the command
+
+        // Starts a scan cycle (or attaches to one already running). Once complete,
+        // affected players are messaged and the admin gets a summary.
+        [Command("warn", "Send grid warnings to affected online players.")]
+        [Permission(MyPromoteLevel.Admin)]
+        public void WarnPlayers()
+        {
+            var plugin = (Plugin)Context.Plugin;
+
+            string reply = plugin.RequestWarn(Context.Player.SteamUserId);
+
+            Context.Respond(reply);
+        }
+
+        // Instant, single-player check - not part of the batched cycle.
         [Command("check", "Checks your own grids for removal.")]
         [Permission(MyPromoteLevel.None)]
         public void CheckMyGrids()
         {
             var plugin = (Plugin)Context.Plugin;
 
-            var warnings = plugin.RunScan();
+            long identityId = Context.Player.IdentityId;
+            ulong steamId = Context.Player.SteamUserId;
 
-            var myWarnings = warnings
-                .Where(w => w.Grid.OwnerId == Context.Player.IdentityId)
-                .ToList();
+            bool success = plugin.TryCheckPlayer(identityId, out var myWarnings, out var cooldownMessage);
 
-            if (myWarnings.Count == 0)
+            if (!success)
             {
-                Context.Respond("None of your grids require attention.");
-                return;
-            }
-            
-            Context.Respond($"Found {myWarnings.Count} of your grids requiring attention.");
-
-            foreach (var warning in myWarnings)
-            {
-                Context.Respond(
-                    $"{warning.Grid.Name} | Blocks: {warning.Grid.BlockCount}");
-
-                foreach (var problem in warning.Problems)
-                {
-                    Context.Respond($"  - {problem}");
-                }
-            }
-        }
-
-        // Command to send warnings to affected online players
-        [Command("warn", "Send grid warnings to affected online players.")]
-
-        [Permission(MyPromoteLevel.Admin)]
-        public void WarnPlayers()
-        {
-            var plugin = (Plugin)Context.Plugin;
-
-            var warnings = plugin.RunScan();
-
-            if (warnings.Count == 0)
-            {
-                Context.Respond("No grids require warnings.");
+                plugin.SendCooldownMessageTo(steamId, cooldownMessage);
                 return;
             }
 
-
-            foreach(var playerWarnings in warnings.GroupBy(w => w.Grid.OwnerId))
-
-                {
-                var ownerId = playerWarnings.Key;
-
-                var identity = MySession.Static.Players.TryGetIdentity(ownerId);
-
-                if (identity == null)
-                    continue;
-                
-                var player = Context.Torch.CurrentSession.KeenSession.Players
-                    .GetOnlinePlayers()
-                    .FirstOrDefault(p => p.Identity != null && p.Identity.IdentityId == ownerId);
-
-                if (player == null)
-                    continue;
-
-                string message =
-                    "The following grids require attention:\n\n";
-
-                foreach (var warning in playerWarnings)
-                {
-                    message += $"{warning.Grid.Name}\n";
-
-                    foreach (var problem in warning.Problems)
-                    {
-                        message += $"  • {problem}\n";
-                    }
-
-                    message += "\n";
-                }
-
-                var chat = Context.Torch.CurrentSession.Managers.GetManager<IChatManagerServer>();
-
-                chat.SendMessageAsOther(
-                    "Grid Removal Warning",
-                    message,
-                    Color.Yellow,
-                    player.Id.SteamId
-                );
-            }
-
-
-            Context.Respond("Warnings sent to affected players.");
+            plugin.SendCheckResultTo(steamId, myWarnings);
         }
     }
 }
