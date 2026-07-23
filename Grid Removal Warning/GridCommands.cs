@@ -16,20 +16,20 @@ namespace Grid_Removal_Warning
         {
             var plugin = (Plugin)Context.Plugin;
 
-            string reply = plugin.RequestScan(Context.Player.SteamUserId);
+            string reply = plugin.RequestScan(Context);
 
             Context.Respond(reply);
         }
 
         // Starts a scan cycle (or attaches to one already running). Once complete,
-        // affected players are messaged and the admin gets a summary.
+        // affected players are messaged and the requester gets a summary.
         [Command("warn", "Send grid warnings to affected online players.")]
         [Permission(MyPromoteLevel.Admin)]
         public void WarnPlayers()
         {
             var plugin = (Plugin)Context.Plugin;
 
-            string reply = plugin.RequestWarn(Context.Player.SteamUserId);
+            string reply = plugin.RequestWarn(Context);
 
             Context.Respond(reply);
         }
@@ -39,6 +39,12 @@ namespace Grid_Removal_Warning
         [Permission(MyPromoteLevel.None)]
         public void CheckMyGrids()
         {
+            if (Context.Player == null)
+            {
+                Context.Respond("This command only works in-game.");
+                return;
+            }
+
             var plugin = (Plugin)Context.Plugin;
 
             long identityId = Context.Player.IdentityId;

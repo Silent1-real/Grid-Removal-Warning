@@ -10,6 +10,7 @@ using Torch;
 using Torch.API;
 using Torch.API.Managers;
 using Torch.API.Plugins;
+using Torch.Commands;
 using Torch.Views;
 using VRageMath;
 
@@ -33,10 +34,11 @@ namespace Grid_Removal_Warning
         private DateTime nextScanTime;
 
         // Requesters waiting on the current (or next) cycle to complete.
-        // Steam IDs are collected purely for where to send the reply -
-        // it does not matter who asked or how many times.
-        private List<ulong> pendingScanRequesters = new List<ulong>();
-        private List<ulong> pendingWarnRequesters = new List<ulong>();
+        // We hold the actual CommandContext so we can Respond() later, once the
+        // cycle finishes - this works the same whether the command came from a
+        // player in-game or from the Torch console.
+        private List<CommandContext> pendingScanRequesters = new List<CommandContext>();
+        private List<CommandContext> pendingWarnRequesters = new List<CommandContext>();
 
         // Hardcoded per-player cooldown for !grw check - not worth exposing in config.
         private static readonly TimeSpan CheckCooldown = TimeSpan.FromSeconds(30);
@@ -94,10 +96,10 @@ namespace Grid_Removal_Warning
 
         // ---------------- Entry points for commands ----------------
 
-        // Returns the immediate chat reply for the admin who ran !grw scan.
-        public string RequestScan(ulong requesterSteamId)
+        // Returns the immediate reply for whoever ran !grw scan (player or console).
+        public string RequestScan(CommandContext context)
         {
-            pendingScanRequesters.Add(requesterSteamId);
+            pendingScanRequesters.Add(context);
 
             if (scanner.IsScanning)
             {
@@ -108,10 +110,10 @@ namespace Grid_Removal_Warning
             return "Scan started. You'll receive the report when it finishes.";
         }
 
-        // Returns the immediate chat reply for the admin who ran !grw warn.
-        public string RequestWarn(ulong requesterSteamId)
+        // Returns the immediate reply for whoever ran !grw warn (player or console).
+        public string RequestWarn(CommandContext context)
         {
-            pendingWarnRequesters.Add(requesterSteamId);
+            pendingWarnRequesters.Add(context);
 
             if (scanner.IsScanning)
             {
@@ -211,12 +213,12 @@ namespace Grid_Removal_Warning
             if (pendingWarnRequesters.Count > 0)
             {
                 NotifyAffectedPlayers(warnings);
-                SendScanSummaryTo(pendingWarnRequesters, warnings, "Warnings sent to affected players.");
+                RespondScanSummary(pendingWarnRequesters, warnings, "Warnings sent to affected players.");
             }
 
             if (pendingScanRequesters.Count > 0)
             {
-                SendFullReportTo(pendingScanRequesters, warnings);
+                RespondFullReport(pendingScanRequesters, warnings);
             }
 
             pendingWarnRequesters.Clear();
@@ -267,13 +269,13 @@ namespace Grid_Removal_Warning
         }
 
         // ---------------- Chat dispatch ----------------
-        // Send messages to affected players and admins after a scan cycle completes.
+
         private void NotifyAffectedPlayers(List<GridValidationResult> warnings)
         {
             var chat = Torch.CurrentSession?.Managers?.GetManager<IChatManagerServer>();
             if (chat == null)
                 return;
-            // Group warnings by player and send a message to each affected player.
+
             foreach (var playerWarnings in warnings.GroupBy(w => w.Grid.OwnerId))
             {
                 var ownerId = playerWarnings.Key;
@@ -306,55 +308,44 @@ namespace Grid_Removal_Warning
                 chat.SendMessageAsOther("Grid Removal Warning", message, Color.Yellow, player.Id.SteamId);
             }
         }
-        // Send a summary of the scan results to the admins who requested it.
-        private void SendScanSummaryTo(List<ulong> steamIds, List<GridValidationResult> warnings, string summary)
-        {
-            var chat = Torch.CurrentSession?.Managers?.GetManager<IChatManagerServer>();
-            if (chat == null)
-                return;
 
+        private void RespondScanSummary(List<CommandContext> requesters, List<GridValidationResult> warnings, string summary)
+        {
             string message = warnings.Count == 0
                 ? "No grids require warnings."
                 : $"Found {warnings.Count} grids requiring attention. {summary}";
 
-            foreach (var steamId in steamIds.Distinct())
+            foreach (var ctx in requesters)
             {
-                chat.SendMessageAsOther("Grid Removal Warning", message, Color.Yellow, steamId);
+                ctx.Respond(message);
             }
         }
-        // Send a full report of the scan results to the admins who requested it.
-        private void SendFullReportTo(List<ulong> steamIds, List<GridValidationResult> warnings)
+
+        private void RespondFullReport(List<CommandContext> requesters, List<GridValidationResult> warnings)
         {
-            var chat = Torch.CurrentSession?.Managers?.GetManager<IChatManagerServer>();
-            if (chat == null)
-                return;
-
-            string message;
-
             if (warnings.Count == 0)
             {
-                message = "No grids require attention.";
+                foreach (var ctx in requesters)
+                {
+                    ctx.Respond("No grids require attention.");
+                }
+
+                return;
             }
-            else
+
+            foreach (var ctx in requesters)
             {
-                message = $"Found {warnings.Count} grids requiring attention.\n\n";
+                ctx.Respond($"Found {warnings.Count} grids requiring attention.");
 
                 foreach (var warning in warnings)
                 {
-                    message += $"{warning.Grid.Name} | Owner: {warning.Grid.OwnerName} | Blocks: {warning.Grid.BlockCount}\n";
+                    ctx.Respond($"{warning.Grid.Name} | Owner: {warning.Grid.OwnerName} | Blocks: {warning.Grid.BlockCount}");
 
                     foreach (var problem in warning.Problems)
                     {
-                        message += $"  - {problem}\n";
+                        ctx.Respond($"  - {problem}");
                     }
-
-                    message += "\n";
                 }
-            }
-
-            foreach (var steamId in steamIds.Distinct())
-            {
-                chat.SendMessageAsOther("Grid Removal Warning", message, Color.Yellow, steamId);
             }
         }
 

@@ -18,7 +18,8 @@ namespace Grid_Removal_Warning
         private List<MyCubeGrid> allGridsSnapshot;
         private List<MyPlayer> pendingPlayers;
         private HashSet<long> processedGridIds;
-        private HashSet<long> subgridIds;
+        private HashSet<long> discoveredSubgridIds;
+        private bool checkSubgrids;
         private List<GridInfo> currentCycleResults;
         private int playerIndex;
 
@@ -48,20 +49,10 @@ namespace Grid_Removal_Warning
 
             processedGridIds = new HashSet<long>();
             currentCycleResults = new List<GridInfo>();
+            discoveredSubgridIds = new HashSet<long>();
             playerIndex = 0;
 
-            if (config.IgnoreSubgridsForBlockCheck || config.IgnoreSubgridsForNameCheck)
-            {
-                var subgridWatch = Stopwatch.StartNew();
-                subgridIds = GetSubgridIds(allGridsSnapshot);
-                subgridWatch.Stop();
-
-                Log.Info($"[Perf] Subgrid lookup took {subgridWatch.ElapsedMilliseconds} ms.");
-            }
-            else
-            {
-                subgridIds = new HashSet<long>();
-            }
+            checkSubgrids = config.IgnoreSubgridsForBlockCheck || config.IgnoreSubgridsForNameCheck;
 
             IsScanning = true;
 
@@ -86,8 +77,25 @@ namespace Grid_Removal_Warning
             long identityId = player.Identity.IdentityId;
 
             var ownedGrids = allGridsSnapshot
-                .Where(g => g.BigOwners.Contains(identityId));
+                .Where(g => g.BigOwners.Contains(identityId))
+                .ToList();
 
+            // Only checked if config actually cares - finds subgrids attached to
+            // THIS player's grids. Offline-owned subgrids are filtered out for
+            // free elsewhere: we only ever enumerate online players' owned grids,
+            // so a subgrid owned by an offline player never enters currentCycleResults.
+            if (checkSubgrids)
+            {
+                foreach (var grid in ownedGrids)
+                {
+                    foreach (var block in grid.GetFatBlocks<MyMechanicalConnectionBlockBase>())
+                    {
+                        if (block.TopGrid != null)
+                            discoveredSubgridIds.Add(block.TopGrid.EntityId);
+                    }
+                }
+            }
+            
             int gridsThisStep = 0;
 
             foreach (var grid in ownedGrids)
@@ -109,7 +117,7 @@ namespace Grid_Removal_Warning
                     OwnerName = player.DisplayName,
                     Grid = grid,
                     FoundBlocks = GetGridBlocks(grid),
-                    IsSubgrid = subgridIds.Contains(grid.EntityId)
+                    IsSubgrid = discoveredSubgridIds.Contains(grid.EntityId)
                 });
 
                 gridsThisStep++;
@@ -134,10 +142,25 @@ namespace Grid_Removal_Warning
         private void FinishScan()
         {
             IsScanning = false;
+
+            // Correction pass: a grid may have been added to results before we
+            // discovered it was a subgrid (its owner's step ran before the step
+            // that found the mechanical connection to it). This only touches the
+            // already-collected results (a handful), not the whole world.
+            if (checkSubgrids)
+            {
+                foreach (var info in currentCycleResults)
+                {
+                    if (!info.IsSubgrid && discoveredSubgridIds.Contains(info.EntityId))
+                        info.IsSubgrid = true;
+                }
+            }
+
             cycleStopwatch.Stop();
 
-            Log.Info($"[Perf] Full scan cycle completed in {cycleStopwatch.ElapsedMilliseconds} ms (spread across {playerIndex} ticks). " +
-                     $"Grids collected: {currentCycleResults.Count}.");
+            Log.Info($"[Perf] Full scan cycle completed in {cycleStopwatch.ElapsedMilliseconds} ms "
+                     + $"may includes at least one tick duration. (spread across {playerIndex} ticks). "
+                     + $"Grids collected: {currentCycleResults.Count}.");
         }
 
         public List<GridInfo> GetResults() => currentCycleResults;
