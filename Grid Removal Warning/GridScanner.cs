@@ -39,13 +39,13 @@ namespace Grid_Removal_Warning
         {
             cycleStopwatch = Stopwatch.StartNew();
 
-            var snapshotWatch = Stopwatch.StartNew();
             allGridsSnapshot = MyEntities.GetEntities().OfType<MyCubeGrid>().ToList();
-            snapshotWatch.Stop();
 
-            Log.Info($"[Perf] Entity snapshot ({allGridsSnapshot.Count} grids) took {snapshotWatch.ElapsedMilliseconds} ms.");
+            // Get a list of all online players at the start of the scan cycle.
 
-            pendingPlayers = MySession.Static.Players.GetOnlinePlayers().ToList();
+            pendingPlayers = MySession.Static.Players.GetOnlinePlayers()
+                .Where(p => p.IsRealPlayer)
+                .ToList();
 
             processedGridIds = new HashSet<long>();
             currentCycleResults = new List<GridInfo>();
@@ -71,8 +71,6 @@ namespace Grid_Removal_Warning
                 return true;
             }
 
-            var stepWatch = Stopwatch.StartNew();
-
             var player = pendingPlayers[playerIndex];
             long identityId = player.Identity.IdentityId;
 
@@ -82,7 +80,7 @@ namespace Grid_Removal_Warning
 
             // Only checked if config actually cares - finds subgrids attached to
             // THIS player's grids. Offline-owned subgrids are filtered out for
-            // free elsewhere: we only ever enumerate online players' owned grids,
+            // free elsewhere: this only ever enumerate online players' owned grids,
             // so a subgrid owned by an offline player never enters currentCycleResults.
             if (checkSubgrids)
             {
@@ -123,11 +121,6 @@ namespace Grid_Removal_Warning
                 gridsThisStep++;
             }
 
-            stepWatch.Stop();
-
-            Log.Info($"[Perf] Step {playerIndex + 1}/{pendingPlayers.Count} ({player.DisplayName}): " +
-                     $"{gridsThisStep} grids processed in {stepWatch.ElapsedMilliseconds} ms.");
-
             playerIndex++;
 
             if (playerIndex >= pendingPlayers.Count)
@@ -143,7 +136,7 @@ namespace Grid_Removal_Warning
         {
             IsScanning = false;
 
-            // Correction pass: a grid may have been added to results before we
+            // Correction pass: a grid may have been added to results before
             // discovered it was a subgrid (its owner's step ran before the step
             // that found the mechanical connection to it). This only touches the
             // already-collected results (a handful), not the whole world.
@@ -174,6 +167,11 @@ namespace Grid_Removal_Warning
             var results = new List<GridInfo>();
 
             var player = MySession.Static.Players.GetOnlinePlayers()
+
+                // Filter out NPCs and other non-player entities, with using IsRealPlayer Property. This ensures gathering actual human players in the game.
+
+                .Where(p => p.IsRealPlayer)
+
                 .FirstOrDefault(p => p.Identity.IdentityId == identityId);
 
             if (player == null)

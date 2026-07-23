@@ -29,8 +29,6 @@ namespace Grid_Removal_Warning
                 Grid = info
             };
 
-            Log.Info($"Validating grid: {info.Name}");
-
             // Check for owner
             if (info.OwnerId == 0)
             {

@@ -26,7 +26,7 @@ namespace Grid_Removal_Warning
         private GridScanner scanner;
         // Validator for checking the properties of detected grids
         private GridValidator validator;
-
+        // Resolver for mapping block names to their definitions
         private BlockDefinitionResolver resolver;
 
         private static readonly Logger Log = LogManager.GetCurrentClassLogger();
@@ -283,10 +283,10 @@ namespace Grid_Removal_Warning
 
                 if (identity == null)
                     continue;
-
+                // Find the player object for the owner of the grids with warnings
                 var player = Torch.CurrentSession.KeenSession.Players
                     .GetOnlinePlayers()
-                    .FirstOrDefault(p => p.Identity != null && p.Identity.IdentityId == ownerId);
+                    .FirstOrDefault(p => p.IsRealPlayer && p.Identity != null && p.Identity.IdentityId == ownerId);
 
                 if (player == null)
                     continue;
@@ -308,7 +308,7 @@ namespace Grid_Removal_Warning
                 chat.SendMessageAsOther("Grid Removal Warning", message, Color.Yellow, player.Id.SteamId);
             }
         }
-
+        
         private void RespondScanSummary(List<CommandContext> requesters, List<GridValidationResult> warnings, string summary)
         {
             string message = warnings.Count == 0
@@ -320,7 +320,7 @@ namespace Grid_Removal_Warning
                 ctx.Respond(message);
             }
         }
-
+        // ---------------- Full report dispatch ----------------
         private void RespondFullReport(List<CommandContext> requesters, List<GridValidationResult> warnings)
         {
             if (warnings.Count == 0)
@@ -332,7 +332,7 @@ namespace Grid_Removal_Warning
 
                 return;
             }
-
+            // Send a detailed report to each requester
             foreach (var ctx in requesters)
             {
                 ctx.Respond($"Found {warnings.Count} grids requiring attention.");
