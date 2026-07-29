@@ -3,6 +3,7 @@ using Sandbox;
 using Sandbox.Game.World;
 using System;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
 using System.Windows.Controls;
@@ -100,28 +101,30 @@ namespace Grid_Removal_Warning
         public string RequestScan(CommandContext context)
         {
             pendingScanRequesters.Add(context);
+            var messages = GridMessages.Get(Config);
 
             if (scanner.IsScanning)
             {
-                return "A scan is already in progress. You'll receive the report when it finishes.";
+                return messages.ScanAlreadyRunning;
             }
 
             scanner.StartScan();
-            return "Scan started. You'll receive the report when it finishes.";
+            return messages.ScanStarted;
         }
 
         // Returns the immediate reply for whoever ran !grw warn (player or console).
         public string RequestWarn(CommandContext context)
         {
             pendingWarnRequesters.Add(context);
+            var messages = GridMessages.Get(Config);
 
             if (scanner.IsScanning)
             {
-                return "A scan is already in progress. Warnings will be sent once it finishes.";
+                return messages.WarnAlreadyRunning;
             }
 
             scanner.StartScan();
-            return "Scan started. Warnings will be sent once it finishes.";
+            return messages.WarnStarted;
         }
 
         // Instant, single-player scan for !grw check. Not part of the batched cycle.
@@ -133,7 +136,9 @@ namespace Grid_Removal_Warning
             {
                 var remaining = (lastCheck + CheckCooldown) - DateTime.Now;
                 results = null;
-                cooldownMessage = $"Please wait {Math.Ceiling(remaining.TotalSeconds)}s before checking again.";
+
+                var messages = GridMessages.Get(Config);
+                cooldownMessage = string.Format(messages.PleaseWaitBeforeChecking, Math.Ceiling(remaining.TotalSeconds));
                 return false;
             }
 
@@ -212,8 +217,9 @@ namespace Grid_Removal_Warning
 
             if (pendingWarnRequesters.Count > 0)
             {
+                var messages = GridMessages.Get(Config);
                 NotifyAffectedPlayers(warnings);
-                RespondScanSummary(pendingWarnRequesters, warnings, "Warnings sent to affected players.");
+                RespondScanSummary(pendingWarnRequesters, warnings, messages.WarningsSentToPlayers);
             }
 
             if (pendingScanRequesters.Count > 0)
@@ -233,24 +239,23 @@ namespace Grid_Removal_Warning
             if (chat == null)
                 return;
 
+            var messages = GridMessages.Get(Config);
             string message;
 
             if (warnings.Count == 0)
             {
-                message = "None of your grids require attention.";
+                message = messages.NoneOfYourGridsRequireAttention;
             }
             else
             {
-                message = $"Found {warnings.Count} of your grids requiring attention.\n\n";
+                message = $"{string.Format(messages.FoundYourGridsRequiringAttention, warnings.Count)}\n\n";
 
                 foreach (var warning in warnings)
                 {
-                    message += $"{warning.Grid.Name} | Blocks: {warning.Grid.BlockCount}\n";
+                    message += $"{warning.Grid.Name} | {messages.BlocksLabel} {warning.Grid.BlockCount}\n";
 
                     foreach (var problem in warning.Problems)
-                    {
                         message += $"  - {problem}\n";
-                    }
 
                     message += "\n";
                 }
@@ -275,6 +280,8 @@ namespace Grid_Removal_Warning
             var chat = Torch.CurrentSession?.Managers?.GetManager<IChatManagerServer>();
             if (chat == null)
                 return;
+            
+            var messages = GridMessages.Get(Config);
 
             foreach (var playerWarnings in warnings.GroupBy(w => w.Grid.OwnerId))
             {
@@ -291,16 +298,14 @@ namespace Grid_Removal_Warning
                 if (player == null)
                     continue;
 
-                string message = "The following grids require attention:\n\n";
+                string message = messages.GridsRequireAttentionHeader + "\n\n";
 
                 foreach (var warning in playerWarnings)
                 {
                     message += $"{warning.Grid.Name}\n";
 
                     foreach (var problem in warning.Problems)
-                    {
                         message += $"  \u2022 {problem}\n";
-                    }
 
                     message += "\n";
                 }
@@ -308,43 +313,40 @@ namespace Grid_Removal_Warning
                 chat.SendMessageAsOther("Grid Removal Warning", message, Color.Yellow, player.Id.SteamId);
             }
         }
-        
+
         private void RespondScanSummary(List<CommandContext> requesters, List<GridValidationResult> warnings, string summary)
         {
+            var messages = GridMessages.Get(Config);
+
             string message = warnings.Count == 0
-                ? "No grids require warnings."
-                : $"Found {warnings.Count} grids requiring attention. {summary}";
+                ? messages.NoGridsRequireWarnings
+                : $"{string.Format(messages.GridsRequireAttention, warnings.Count)} {summary}";
 
             foreach (var ctx in requesters)
-            {
-                ctx.Respond(message);
-            }
+                ctx.Respond(message); 
         }
         // ---------------- Full report dispatch ----------------
         private void RespondFullReport(List<CommandContext> requesters, List<GridValidationResult> warnings)
         {
+            var messages = GridMessages.Get(Config);
+
             if (warnings.Count == 0)
             {
                 foreach (var ctx in requesters)
-                {
-                    ctx.Respond("No grids require attention.");
-                }
-
+                    ctx.Respond(messages.NoGridsRequireAttention);
                 return;
             }
-            // Send a detailed report to each requester
+
             foreach (var ctx in requesters)
             {
-                ctx.Respond($"Found {warnings.Count} grids requiring attention.");
+                ctx.Respond(string.Format(messages.GridsRequireAttention, warnings.Count));
 
                 foreach (var warning in warnings)
                 {
-                    ctx.Respond($"{warning.Grid.Name} | Owner: {warning.Grid.OwnerName} | Blocks: {warning.Grid.BlockCount}");
+                    ctx.Respond($"{warning.Grid.Name} | {messages.OwnerLabel} {warning.Grid.OwnerName} | {messages.BlocksLabel} {warning.Grid.BlockCount}");
 
                     foreach (var problem in warning.Problems)
-                    {
                         ctx.Respond($"  - {problem}");
-                    }
                 }
             }
         }

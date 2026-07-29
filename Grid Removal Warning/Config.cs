@@ -120,7 +120,7 @@ namespace Grid_Removal_Warning
             + "the plugin have its own name resolver but its important to write what comes after MyObjectBuilder_ correctly. "
             + "worth to note that resolver is not case sensetive wether you type beacon or Beacon does not matter.+"
             + "Since plugin use parrent category for search it automaticly includeds any subtype example DLC or potenital modded version")]
-        
+
         public List<string> RequiredBlocks
         {
             get => _requiredBlocks;
@@ -186,6 +186,24 @@ namespace Grid_Removal_Warning
             {
                 _ignoreSubgridsForNameCheck = value;
                 OnPropertyChanged();
+            }
+        }
+        private Language _PreferredLanguage = Language.English;
+        // Preferred language for messages sent to players and admins
+        [Display(
+            Order = 12,
+            GroupName = "General",
+            Name = "Messages Preferred Language",
+            Description = "Language used for Messages.")]
+
+        public Language PreferredLanguage
+        {
+            get => _PreferredLanguage;
+            set
+            {
+                _PreferredLanguage = value;
+                OnPropertyChanged();
+
             }
         }
     }

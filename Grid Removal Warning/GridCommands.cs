@@ -39,13 +39,13 @@ namespace Grid_Removal_Warning
         [Permission(MyPromoteLevel.None)]
         public void CheckMyGrids()
         {
+            var plugin = (Plugin)Context.Plugin;
+
             if (Context.Player == null)
             {
-                Context.Respond("This command only works in-game.");
+                Context.Respond(GridMessages.Get(plugin.Config).ConsoleOnlyCommand);
                 return;
             }
-
-            var plugin = (Plugin)Context.Plugin;
 
             long identityId = Context.Player.IdentityId;
             ulong steamId = Context.Player.SteamUserId;

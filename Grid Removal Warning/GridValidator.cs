@@ -29,6 +29,8 @@ namespace Grid_Removal_Warning
                 Grid = info
             };
 
+            var messages = GridMessages.Get(config);
+
             // Check for owner
             if (info.OwnerId == 0)
             {
@@ -39,14 +41,14 @@ namespace Grid_Removal_Warning
             if (config.EnableBlockCheck && !(config.IgnoreSubgridsForBlockCheck && info.IsSubgrid))
             {
 
-                 CheckRequiredBlocks(info, result);
+                 CheckRequiredBlocks(info, result, messages);
             }
 
             // Check generic grid name
             if (config.EnableNameCheck && !(config.IgnoreSubgridsForNameCheck && info.IsSubgrid))
             {
 
-                CheckGridName(info, result);
+                CheckGridName(info, result, messages);
             }
 
             return result;
@@ -54,7 +56,7 @@ namespace Grid_Removal_Warning
 
         private void CheckRequiredBlocks(
             GridInfo info,
-            GridValidationResult result)
+            GridValidationResult result, MessageSet messages)
         {
             // Group all definitions by TypeId.
             // Example:
@@ -93,21 +95,18 @@ namespace Grid_Removal_Warning
                             "MyObjectBuilder_".Length);
                     }
 
-                    result.Problems.Add(
-                        $"Missing {categoryName}");
+                    result.Problems.Add($"{messages.MissingPrefix} {categoryName}");
                 }
             }
         }
 
-        private void CheckGridName(
-            GridInfo info,
-            GridValidationResult result)
+        private void CheckGridName(GridInfo info, GridValidationResult result, MessageSet messages)
         {
             foreach (var genericName in config.GenericGridNames)
             {
                 if (info.Name.StartsWith(genericName))
                 {
-                    result.Problems.Add("Generic grid name");
+                    result.Problems.Add(messages.GenericGridName);
                     break;
                 }
             }
