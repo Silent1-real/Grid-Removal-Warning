@@ -70,7 +70,7 @@ namespace Grid_Removal_Warning
             InGameOnlyCommand = "This command only works in-game."
 
         };
-        // German
+        // German @DarkFight
         public static MessageSet German() => new MessageSet
         {
             // GridValidator.cs
