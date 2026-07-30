@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Grid_Removal_Warning
+﻿namespace Grid_Removal_Warning
 {
 
     public class MessageSet
@@ -159,7 +153,7 @@ namespace Grid_Removal_Warning
                     return German();
                 case Language.Russian:
                     return Russian();
-               // case Language.French:
+                // case Language.French:
                 //    return French();
                 default:
                     return English();

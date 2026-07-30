@@ -6,13 +6,13 @@ using System.Xml.Serialization;
 using NLog;
 
 namespace Grid_Removal_Warning
-    //Thanks rar61 :))
+//Thanks rar61 :))
 {
     public class VeryPersistent<T> : IDisposable where T : new()
     {
         public string Path { get; private set; }
         public T Data { get; private set; }
-        
+
         private static Logger Log = LogManager.GetCurrentClassLogger();
         private Timer saveTimer;
 
@@ -20,19 +20,19 @@ namespace Grid_Removal_Warning
         {
             Path = path;
             Data = data;
-            
+
             if (data is INotifyPropertyChanged notify) notify.PropertyChanged += OnPropertyChanged;
         }
-        
+
         public void Dispose()
         {
             if (Data is INotifyPropertyChanged notify) notify.PropertyChanged -= OnPropertyChanged;
             saveTimer?.Dispose();
             Save();
-            
+
             GC.SuppressFinalize(this);
         }
-        
+
         ~VeryPersistent()
         {
             Dispose();
@@ -41,13 +41,13 @@ namespace Grid_Removal_Warning
         public static VeryPersistent<T> Load(string path, bool saveIfNoFile = true, Func<T> factory = null)
         {
             VeryPersistent<T> persistent;
-            
+
             try
             {
                 if (File.Exists(path))
                 {
                     var serializer = new XmlSerializer(typeof(T));
-                    using (var f = File.OpenText(path)) persistent = new VeryPersistent<T>(path,(T)serializer.Deserialize(f));
+                    using (var f = File.OpenText(path)) persistent = new VeryPersistent<T>(path, (T)serializer.Deserialize(f));
                 }
                 else
                 {
@@ -69,7 +69,7 @@ namespace Grid_Removal_Warning
                 Log.Info($"Created default config: {path}");
             }
         }
-        
+
         public void Save()
         {
             var serializer = new XmlSerializer(typeof(T));
@@ -83,14 +83,14 @@ namespace Grid_Removal_Warning
                 Log.Error(e);
             }
         }
-        
+
         private void OnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             SaveAsync();
 
-            Log.Info($"Property changed: {e.PropertyName}. Saving config: {Path}");
+            Log.Info($"Setting changed {e.PropertyName}. Saving config...");
         }
-        
+
         private void SaveAsync()
         {
             if (saveTimer == null) saveTimer = new Timer(state => Save());

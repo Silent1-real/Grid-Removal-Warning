@@ -41,7 +41,7 @@ namespace Grid_Removal_Warning
             if (config.EnableBlockCheck && !(config.IgnoreSubgridsForBlockCheck && info.IsSubgrid))
             {
 
-                 CheckRequiredBlocks(info, result, messages);
+                CheckRequiredBlocks(info, result, messages);
             }
 
             // Check generic grid name

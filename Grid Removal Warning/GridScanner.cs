@@ -93,7 +93,7 @@ namespace Grid_Removal_Warning
                     }
                 }
             }
-            
+
             int gridsThisStep = 0;
 
             foreach (var grid in ownedGrids)

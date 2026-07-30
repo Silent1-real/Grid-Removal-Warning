@@ -2,6 +2,7 @@
 using Torch;
 using Torch.Views;
 
+
 namespace Grid_Removal_Warning
 {
     public class Config : ViewModel

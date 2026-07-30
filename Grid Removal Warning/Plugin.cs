@@ -3,7 +3,6 @@ using Sandbox;
 using Sandbox.Game.World;
 using System;
 using System.Collections.Generic;
-using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
 using System.Windows.Controls;
@@ -280,7 +279,7 @@ namespace Grid_Removal_Warning
             var chat = Torch.CurrentSession?.Managers?.GetManager<IChatManagerServer>();
             if (chat == null)
                 return;
-            
+
             var messages = GridMessages.Get(Config);
 
             foreach (var playerWarnings in warnings.GroupBy(w => w.Grid.OwnerId))
@@ -323,7 +322,7 @@ namespace Grid_Removal_Warning
                 : $"{string.Format(messages.GridsRequireAttention, warnings.Count)} {summary}";
 
             foreach (var ctx in requesters)
-                ctx.Respond(message); 
+                ctx.Respond(message);
         }
         // ---------------- Full report dispatch ----------------
         private void RespondFullReport(List<CommandContext> requesters, List<GridValidationResult> warnings)
