@@ -34,7 +34,7 @@ namespace Grid_Removal_Warning
         public string PleaseWaitBeforeChecking;        // "Please wait {0}s before checking again." - {0} = seconds
 
         // GridCommands.cs
-        public string ConsoleOnlyCommand; // "This command only works in-game."
+        public string InGameOnlyCommand; // "This command only works in-game."
     }
     // English
     public static class GridMessages
@@ -67,7 +67,7 @@ namespace Grid_Removal_Warning
             PleaseWaitBeforeChecking = "Please wait {0}s before checking again.",
 
             // GridCommands.cs
-            ConsoleOnlyCommand = "This command only works in-game."
+            InGameOnlyCommand = "This command only works in-game."
 
         };
         // German
@@ -75,17 +75,17 @@ namespace Grid_Removal_Warning
         {
             // GridValidator.cs
             MissingPrefix = "Fehlender",
-            GenericGridName = "Generischer Gridname",
+            GenericGridName = "Name der Blockkonstruktion",
             // Plugin.cs - scan/warn immediate replies
             ScanAlreadyRunning = "Ein Scan läuft bereits. Sie erhalten den Bericht, wenn er abgeschlossen ist.",
             ScanStarted = "Scan gestartet. Sie erhalten den Bericht, wenn er abgeschlossen ist.",
             WarnAlreadyRunning = "Ein Scan läuft bereits. Warnungen werden gesendet, sobald er abgeschlossen ist.",
             WarnStarted = "Scan gestartet. Warnungen werden gesendet, sobald er abgeschlossen ist.",
             // Plugin.cs - scan/warn deferred admin reports
-            NoGridsRequireWarnings = "Keine Grids erfordern Warnungen.",
+            NoGridsRequireWarnings = "Grids haben keine Warnungen.",
             GridsRequireAttention = "{0} Grids erfordern Aufmerksamkeit.",
             WarningsSentToPlayers = "Warnungen an betroffene Spieler gesendet.",
-            NoGridsRequireAttention = "Keine Grids erfordern Aufmerksamkeit.",
+            NoGridsRequireAttention = "Grids benötigen keine Aufmerksamkeit.",
             OwnerLabel = "Besitzer:",
             BlocksLabel = "Blöcke:",
             // Plugin.cs - player-facing warn/check messages
@@ -94,7 +94,7 @@ namespace Grid_Removal_Warning
             FoundYourGridsRequiringAttention = "{0} Ihrer Grids erfordern Aufmerksamkeit.",
             PleaseWaitBeforeChecking = "Bitte warten Sie {0}s, bevor Sie erneut prüfen.",
             // GridCommands.cs
-            ConsoleOnlyCommand = "Dieser Befehl funktioniert nur im Spiel."
+            InGameOnlyCommand = "Dieser Befehl funktioniert nur im Spiel."
         };
 
         // Russian
@@ -121,7 +121,7 @@ namespace Grid_Removal_Warning
             FoundYourGridsRequiringAttention = "Найдено {0} ваших сеток, требующих внимания.",
             PleaseWaitBeforeChecking = "Пожалуйста, подождите {0} секунд перед повторной проверкой.",
             // GridCommands.cs
-            ConsoleOnlyCommand = "Эта команда работает только в игре."
+            InGameOnlyCommand = "Эта команда работает только в игре."
         };
 
         //French
@@ -148,7 +148,7 @@ namespace Grid_Removal_Warning
             FoundYourGridsRequiringAttention = "{0} de vos grilles requièrent une attention particulière.",
             PleaseWaitBeforeChecking = "Veuillez patienter {0}s avant de vérifier à nouveau.",
             // GridCommands.cs
-            ConsoleOnlyCommand = "Cette commande ne fonctionne que dans le jeu."
+            InGameOnlyCommand = "Cette commande ne fonctionne que dans le jeu."
         };
 
         public static MessageSet Get(Config config)

@@ -43,7 +43,7 @@ namespace Grid_Removal_Warning
 
             if (Context.Player == null)
             {
-                Context.Respond(GridMessages.Get(plugin.Config).ConsoleOnlyCommand);
+                Context.Respond(GridMessages.Get(plugin.Config).InGameOnlyCommand);
                 return;
             }
 
