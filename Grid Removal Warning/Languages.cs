@@ -5,7 +5,7 @@ namespace Grid_Removal_Warning
     {
         English,
         German,
-        // French,
+        French,
         Russian,
     }
 }

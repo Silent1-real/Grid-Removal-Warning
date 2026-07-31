@@ -153,8 +153,8 @@
                     return German();
                 case Language.Russian:
                     return Russian();
-                // case Language.French:
-                //    return French();
+                case Language.French:
+                    return French();
                 default:
                     return English();
             }
